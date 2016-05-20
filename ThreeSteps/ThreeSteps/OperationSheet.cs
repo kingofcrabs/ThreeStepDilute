@@ -8,18 +8,21 @@ namespace ThreeSteps
 {
     enum ColType
     {
-        srcGrid = 0,
-        srcPosition = 1,
-        dilutionTimes = 2
+        dummy = 0,
+        srcGrid = 1,
+        srcPosition = 2,
+        dilutionTimes = 3
     }
 
     class OperationSheet
     {
         List<SampleInfo> diultionInfos;
+
         public List<SampleInfo>  Read(string sFile)
         {
             diultionInfos = new List<SampleInfo>();
             List<string> strs = File.ReadAllLines(sFile).ToList();
+            strs = strs.Skip(1).ToList();
             strs.ForEach(x => AddDiultionInfo(x));
             return diultionInfos;
         }
@@ -27,6 +30,8 @@ namespace ThreeSteps
         private void AddDiultionInfo(string s)
         {
             List<string> strs = s.Split(',').ToList();
+            if (strs.Count != 4)
+                throw new Exception("Invalid file format!");
             int srcGrid = int.Parse(strs[(int)ColType.srcGrid]);
             int srcPosition = int.Parse(strs[(int)ColType.srcPosition]);
             int dilutionTimes = int.Parse(strs[(int)ColType.dilutionTimes]);

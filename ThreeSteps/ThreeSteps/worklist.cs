@@ -10,55 +10,66 @@ namespace ThreeSteps
         int bufferPositionIndex = 0;
         public void DoJob(List<SampleInfo> sampleInfos,
             List<string> bufferPipettingsStrs, 
-            List<string> samplePipettingStrs,
-            List<string> rCommandsTransfer)
+            List<List<string>> samplePipettingStrs,
+            List<string> bufferPipettingsReadableStrs,int regionIndex)
         {
-           
-            List<List<SampleInfo>> each96DiluteInfos = SortInfos(sampleInfos);
-            for (int i = 0; i < each96DiluteInfos.Count; i++ )
+            bufferPositionIndex = 0;
+            List<PipettingInfo> bufferPipettings = new List<PipettingInfo>();
+            var this96DiluteInfos = sampleInfos;
+            while (this96DiluteInfos.Count > 0)// pipetting eight samples together
             {
-                var this96DiluteInfos = each96DiluteInfos[i];
-                while (this96DiluteInfos.Count > 0)// pipetting eight samples together
+                var thisBatchDiluteInfos = this96DiluteInfos.Take(8).ToList();
+                this96DiluteInfos = this96DiluteInfos.Skip(8).ToList();
+                var bufferPipettingsThisBatch = GenerateBufferPipettings(thisBatchDiluteInfos, regionIndex);
+                var samplePipettingsThisBatch = GenerateSamplePipettings(thisBatchDiluteInfos, regionIndex);
+                bufferPipettings.AddRange(bufferPipettingsThisBatch);
+                bufferPipettingsStrs.AddRange(FormatBuffer(bufferPipettingsThisBatch));
+                //samplePipettingsThisBatch.ForEach(x => samplePipettingStrs.Add(FormatSample(x, regionIndex)));
+                for(int i = 0; i < samplePipettingsThisBatch.Count; i++)
                 {
-                    var thisBatchDiluteInfos = this96DiluteInfos.Take(8).ToList();
-                    this96DiluteInfos = this96DiluteInfos.Skip(8).ToList();
-                    var bufferPipettingsThisBatch = GenerateBufferPipettings(thisBatchDiluteInfos,i);
-                    var samplePipettingsThisBatch = GenerateSamplePipettings(thisBatchDiluteInfos,i);
-                    bufferPipettingsStrs.AddRange(FormatBuffer(bufferPipettingsThisBatch));
-                    samplePipettingStrs.AddRange(FormatSample(samplePipettingsThisBatch,i));
+                   samplePipettingStrs[i].AddRange(FormatSample(samplePipettingsThisBatch[i], regionIndex));
                 }
-                rCommandsTransfer.AddRange(GenerateRCommand(this96DiluteInfos.Count, i));
             }
+            bufferPipettings.ForEach(x=>bufferPipettingsReadableStrs.Add(FormatReadable(x)));
         }
 
-
-        public List<string> GenerateRCommand(int sampleCnt, int regionIndex)
+        private string FormatReadable(PipettingInfo pipettingInfo)
         {
-
-            /*R;AspirateParameters;DispenseParameters;Volume;LiquidClass;NoOfDitiRe
-            uses;NoOfMultiDisp;Direction[;ExcludeDestWell]*
-            where:
-            AspirateParameters =
-            SrcRackLabel;SrcRackID;SrcRackType;SrcPosStart;SrcPosEnd;
-            and
-            DispenseParameters =
-            DestRackLabel;DestRackID;DestRackType;DestPosStart;DestPosEnd;
-            R;T2;;Trough 100ml;1;8;MTP96-2;;96 Well Microplate;1;96;100;Water;
-            2;5;0*/
-            List<string> strs = new List<string>();
-            var plateNames = GetPlateNames(regionIndex);
-            int multiDispenseTimes = 1;
-            string aspParameters = string.Format("DP{0};;;1;{1}", plateNames[0],sampleCnt);
-            string dispParameters = string.Format("{0};;;1;{1}", plateNames[1], sampleCnt);
-            string rCommand = string.Format("R;{0};{1};{2};;1;{3};0", aspParameters, dispParameters, 260, multiDispenseTimes);
-            strs.Add(rCommand);
-
-            aspParameters = string.Format("DP{0};;;1;{1}", plateNames[1], sampleCnt);
-            dispParameters = string.Format("{0};;;1;{1}", plateNames[2], sampleCnt);
-            rCommand = string.Format("R;{0};{1};{2};;1;{3};0", aspParameters, dispParameters, 250, multiDispenseTimes);
-            strs.Add(rCommand);
-            return strs;
+                return string.Format("{0},{1},{2},{3},{4}",
+                    pipettingInfo.srcLabware,
+                    pipettingInfo.srcWellID,
+                    pipettingInfo.dstLabware,
+                    pipettingInfo.dstWellID, pipettingInfo.vol);
         }
+
+
+        //public List<string> GenerateRCommand(int sampleCnt, int regionIndex)
+        //{
+
+        //    /*R;AspirateParameters;DispenseParameters;Volume;LiquidClass;NoOfDitiRe
+        //    uses;NoOfMultiDisp;Direction[;ExcludeDestWell]*
+        //    where:
+        //    AspirateParameters =
+        //    SrcRackLabel;SrcRackID;SrcRackType;SrcPosStart;SrcPosEnd;
+        //    and
+        //    DispenseParameters =
+        //    DestRackLabel;DestRackID;DestRackType;DestPosStart;DestPosEnd;
+        //    R;T2;;Trough 100ml;1;8;MTP96-2;;96 Well Microplate;1;96;100;Water;
+        //    2;5;0*/
+        //    List<string> strs = new List<string>();
+        //    var plateNames = GetPlateNames(regionIndex);
+        //    int multiDispenseTimes = 1;
+        //    string aspParameters = string.Format("{0};;;1;{1}", plateNames[0],sampleCnt);
+        //    string dispParameters = string.Format("{0};;;1;{1}", plateNames[1], sampleCnt);
+        //    string rCommand = string.Format("R;{0};{1};{2};;1;{3};0", aspParameters, dispParameters, 260, multiDispenseTimes);
+        //    strs.Add(rCommand);
+
+        //    aspParameters = string.Format("{0};;;1;{1}", plateNames[1], sampleCnt);
+        //    dispParameters = string.Format("{0};;;1;{1}", plateNames[2], sampleCnt);
+        //    rCommand = string.Format("R;{0};{1};{2};;1;{3};0", aspParameters, dispParameters, 250, multiDispenseTimes);
+        //    strs.Add(rCommand);
+        //    return strs;
+        //}
 
         private List<string> FormatSample(List<PipettingInfo> samplePipettingsThisBatch, int regionIndex)
         {
@@ -72,8 +83,12 @@ namespace ThreeSteps
                 strs.Add(GetDispense(pipettingInfo.dstLabware, pipettingInfo.dstWellID, pipettingInfo.vol));
                 double volume = Configurations.Instance.Ratio * pipettingInfo.vol;
                 //mix
-                strs.Add(GetAspirate(pipettingInfo.dstLabware, pipettingInfo.dstWellID, volume));
-                strs.Add(GetDispense(pipettingInfo.dstLabware, pipettingInfo.dstWellID, volume));
+                for (int i = 0; i < Configurations.Instance.MixTimes; i++)
+                {
+                    strs.Add(GetAspirate(pipettingInfo.dstLabware, pipettingInfo.dstWellID, volume));
+                    strs.Add(GetDispense(pipettingInfo.dstLabware, pipettingInfo.dstWellID, volume));
+                }
+                strs.Add("W;");
             }
             return strs;
         }
@@ -120,38 +135,55 @@ namespace ThreeSteps
             return strs;
         }
 
-        private List<List<SampleInfo>> SortInfos(List<SampleInfo> diluteInfos)
+        public List<List<SampleInfo>> SortInfos(List<SampleInfo> diluteInfos)
         {
             List<List<SampleInfo>> eachBatchDiluteInfos = new List<List<SampleInfo>>();
             for(int i = 0; i< 4; i++)
             {
                 int startGird = i * 6 + 1;
                 int endGrid = i * 6 + 6;
-                eachBatchDiluteInfos.Add(diluteInfos.Where(x => x.gridNum >= startGird && x.gridNum <= endGrid).ToList());
+                var thisRegionInfos = diluteInfos.Where(x => x.gridNum >= startGird && x.gridNum <= endGrid).ToList();
+                if (thisRegionInfos.Count == 0)
+                    break;
+                eachBatchDiluteInfos.Add(thisRegionInfos);
             }
             return eachBatchDiluteInfos;
         }
 
-        private List<PipettingInfo> GenerateSamplePipettings(List<SampleInfo> thisBatchDiluteInfos, int regionIndex)
+        private List<List<PipettingInfo>> GenerateSamplePipettings(List<SampleInfo> thisBatchDiluteInfos, int regionIndex)
         {
-            List<PipettingInfo> pipettingInfos = new List<PipettingInfo>();
-            foreach (var sample in thisBatchDiluteInfos)
+            List<List<PipettingInfo>> threePlatePipettingInfos = new List<List<PipettingInfo>>();
+            for(int i = 0; i< 3; i++)
             {
-                double vol = GetSampleVolume(sample);
-                vol = Math.Round(vol, 1);
-                pipettingInfos.Add(
-                    new PipettingInfo(string.Format("sample{0}",sample.gridNum),
-                    sample.position,
-                    GetPlateNames(regionIndex).First(), 
-                    GetDstPosition(sample),
-                    vol));
+                List<PipettingInfo> pipettingInfos = new List<PipettingInfo>();
+                foreach (var sample in thisBatchDiluteInfos)
+                {
+                    string srcLabware = string.Format("src{0}", sample.gridNum);
+                    if (i != 0)
+                        srcLabware = GetSourceLabware(i, regionIndex);
+                    double vol = GetSampleVolume(sample,i);
+                    vol = Math.Round(vol, 1);
+                    pipettingInfos.Add(
+                        new PipettingInfo(srcLabware,
+                        sample.position,
+                        GetPlateNames(regionIndex)[i],
+                        GetDstPosition(sample),
+                        vol));
+                }
+                threePlatePipettingInfos.Add(pipettingInfos);
             }
-            return pipettingInfos;
+         
+            return threePlatePipettingInfos;
         }
 
-        private double GetSampleVolume(SampleInfo sample)
+        private string GetSourceLabware(int plateIndex, int regionIndex)
         {
-            return 270 - GetBufferVolume(sample);
+            return string.Format("DP{0}", 1 + plateIndex + regionIndex * 3);
+        }
+
+        private double GetSampleVolume(SampleInfo sample, int indexInRegion)
+        {
+            return GetBufferTotalVolume(indexInRegion) - GetBufferVolume(sample,indexInRegion);
         }
 
         private List<PipettingInfo> GenerateBufferPipettings(List<SampleInfo> thisBatchDiluteInfos, int regionIndex)
@@ -165,17 +197,18 @@ namespace ThreeSteps
             allSamples.Add(plateNames[0], firstPlateDilutes);
             allSamples.Add(plateNames[1], secondPlateDilutes);
             allSamples.Add(plateNames[2], thirdPlateDilutes);
-
+            int plateIndexInRegion = 0;
             foreach (var pair in allSamples)
             {
                 string plateName = pair.Key;
                 var samplesSamePlate = pair.Value;
                 foreach(var sample in samplesSamePlate)
                 {
-                    double vol = GetBufferVolume(sample);
+                    double vol = GetBufferVolume(sample, plateIndexInRegion);
                     vol = Math.Round(vol, 1);
                     pipettingInfos.Add(new PipettingInfo("buffer", GetBufferPosition(), plateName, GetDstPosition(sample), vol));
                 }
+                plateIndexInRegion++;
             }
             return pipettingInfos;
         }
@@ -191,7 +224,7 @@ namespace ThreeSteps
             return plateNames;
         }
 
-        private double GetBufferVolume(SampleInfo sample)
+        private double GetBufferVolume(SampleInfo sample,int plateIndexInRegion)
         {
             double thisPlateTimes = sample.diluteTimes;
             if(sample.diluteTimes > 50 && sample.diluteTimes <= 2500)
@@ -201,8 +234,29 @@ namespace ThreeSteps
             if (sample.diluteTimes > 125000)
                 throw new Exception(string.Format("Invalid sample: {0},{1}", sample.gridNum, sample.position));
 
-            return 270 * (thisPlateTimes - 1) / thisPlateTimes;
+            int total = GetBufferTotalVolume(plateIndexInRegion);
+            return total * (thisPlateTimes - 1) / thisPlateTimes;
             
+        }
+
+        private int GetBufferTotalVolume(int plateIndexInRegion)
+        {
+            int vol = 0;
+            switch(plateIndexInRegion)
+            {
+                case 0:
+                    vol = Configurations.Instance.Plate1Vol;
+                    break;
+                case 1:
+                    vol = Configurations.Instance.Plate2Vol;
+                    break;
+                case 2:
+                    vol = Configurations.Instance.Plate3Vol;
+                    break;
+                default:
+                    throw new Exception("invalid plate index in region, must between 0-2, current value is: " + plateIndexInRegion.ToString());
+            }
+            return vol;
         }
 
         private int GetDstPosition(SampleInfo sample)

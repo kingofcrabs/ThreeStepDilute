@@ -12,7 +12,7 @@ namespace ThreeSteps
     {
         static void Main(string[] args)
         {
-            Helper.WriteResult(true, "");
+            
 #if DEBUG
 #else
 
@@ -29,6 +29,7 @@ namespace ThreeSteps
                 Helper.WriteResult(false, ex.Message);
             }
 #endif
+            Helper.WriteResult(true, "");
             Console.WriteLine("Press any key to exit!");
             Console.ReadKey();
             
@@ -40,11 +41,6 @@ namespace ThreeSteps
             Console.WriteLine(Helper.AssemblyCopyright);
             Console.WriteLine(Helper.AssemblyVersion);
             string outputFolder = Helper.GetOutputFolder();
-            //delete the old ones
-            File.Delete(outputFolder + "buffers.gwl");
-            File.Delete(outputFolder + "samples.gwl");
-            File.Delete(outputFolder + "transfer.gwl");
-
             OperationSheet operationSheet = new OperationSheet();
             var directory = new DirectoryInfo(Configurations.Instance.WorkingFolder);
             var latestFile = directory.GetFiles("*csv")
@@ -53,15 +49,31 @@ namespace ThreeSteps
             if (latestFile == null)
                 throw new FileNotFoundException(string.Format("Cannot find any csv file at folder: {0}", Configurations.Instance.WorkingFolder));
             var sampleInfos = operationSheet.Read(latestFile.FullName);
+            Console.WriteLine(string.Format("There are {0} samples.", sampleInfos.Count));
             worklist worklist = new worklist();
-            List<string> bufferPipettingStrs = new List<string>();
-            List<string> samplePipettingStrs = new List<string>();
-            List<string> rCommandStrs = new List<string>();
-            worklist.DoJob(sampleInfos, bufferPipettingStrs, samplePipettingStrs, rCommandStrs);
-           
-            File.WriteAllLines(outputFolder + "buffers.gwl", bufferPipettingStrs);
-            File.WriteAllLines(outputFolder + "samples.gwl", samplePipettingStrs);
-            File.WriteAllLines(outputFolder + "transfer.gwl", rCommandStrs);
+            var eachPlateSamplesInfo = worklist.SortInfos(sampleInfos);
+            Directory.Delete(outputFolder, true);
+            Directory.CreateDirectory(outputFolder);
+            File.WriteAllText(outputFolder + "regionCnt.txt", eachPlateSamplesInfo.Count.ToString());
+            for(int regionIndex = 0; regionIndex < eachPlateSamplesInfo.Count; regionIndex++)
+            {
+                string subFolder = outputFolder + string.Format("region{0}\\", regionIndex + 1);
+                List<string> bufferPipettingStrs = new List<string>();
+                List<List<string>> samplePipettingStrs = new List<List<string>>();
+                for (int i = 0; i < 3; i++)
+                    samplePipettingStrs.Add(new List<string>());
+                List<string> readableStrs = new List<string>() { "srcLabware,srcWell,dstLabware,dstWell,volume" };
+                worklist.DoJob(eachPlateSamplesInfo[regionIndex], bufferPipettingStrs, samplePipettingStrs, readableStrs, regionIndex);
+                if (!Directory.Exists(subFolder))
+                    Directory.CreateDirectory(subFolder);
+                File.WriteAllLines(subFolder + "buffers.gwl", bufferPipettingStrs);
+                for(int i = 0; i< samplePipettingStrs.Count; i++)
+                {
+                    File.WriteAllLines(string.Format(subFolder + "sample{0}.gwl", i + 1), samplePipettingStrs[i]);
+                }
+                File.WriteAllLines(subFolder + "buffersReadable.csv", readableStrs);
+            }
+            
         }
 
         
