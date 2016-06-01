@@ -159,14 +159,19 @@ namespace ThreeSteps
                 foreach (var sample in thisBatchDiluteInfos)
                 {
                     string srcLabware = string.Format("src{0}", sample.gridNum);
+                    string dstLabware = GetPlateNames(regionIndex)[i];
                     if (i != 0)
+                    {
                         srcLabware = GetSourceLabware(i, regionIndex);
+
+                    }
+                        
                     double vol = GetSampleVolume(sample,i);
                     vol = Math.Round(vol, 1);
                     pipettingInfos.Add(
                         new PipettingInfo(srcLabware,
                         sample.position,
-                        GetPlateNames(regionIndex)[i],
+                       dstLabware,
                         GetDstPosition(sample),
                         vol));
                 }
@@ -178,7 +183,7 @@ namespace ThreeSteps
 
         private string GetSourceLabware(int plateIndex, int regionIndex)
         {
-            return string.Format("DP{0}", 1 + plateIndex + regionIndex * 3);
+            return string.Format("DP{0}", plateIndex + regionIndex * 3);
         }
 
         private double GetSampleVolume(SampleInfo sample, int indexInRegion)
@@ -227,16 +232,61 @@ namespace ThreeSteps
         private double GetBufferVolume(SampleInfo sample,int plateIndexInRegion)
         {
             double thisPlateTimes = sample.diluteTimes;
-            if(sample.diluteTimes > 50 && sample.diluteTimes <= 2500)
-                thisPlateTimes = Math.Sqrt(thisPlateTimes);
-            if(sample.diluteTimes > 2500 && sample.diluteTimes <= 125000)
-                thisPlateTimes = Math.Log(thisPlateTimes,3);
-            if (sample.diluteTimes > 125000)
-                throw new Exception(string.Format("Invalid sample: {0},{1}", sample.gridNum, sample.position));
-
+            //first we reserve 5 times for the third plate
+            thisPlateTimes /= 5;
+            switch(plateIndexInRegion)
+            {
+                case 0:
+                    thisPlateTimes = GetBufferVolumeFirstPlate(thisPlateTimes);
+                    break;
+                case 1:
+                    thisPlateTimes = GetBufferVolumeSecondPlate(thisPlateTimes);
+                    break;
+                case 2:
+                    thisPlateTimes = GetBufferVolumeThirdPlate(thisPlateTimes);
+                    break;
+            }
+            
             int total = GetBufferTotalVolume(plateIndexInRegion);
             return total * (thisPlateTimes - 1) / thisPlateTimes;
             
+        }
+
+        private double GetBufferVolumeThirdPlate(double thisPlateTimes)
+        {
+            if (thisPlateTimes <= 2500)
+                return 5;
+            else
+            {
+                thisPlateTimes *= 5;
+                return Math.Pow(thisPlateTimes, 0.333);
+            }
+        }
+
+        private double GetBufferVolumeSecondPlate(double thisPlateTimes)
+        {
+            if (thisPlateTimes < 50)
+                return 1;
+            else if (thisPlateTimes <= 2500)
+                return Math.Sqrt(thisPlateTimes);
+            else
+            {
+                thisPlateTimes *= 5;
+                return Math.Pow(thisPlateTimes, 0.333);
+            }
+        }
+
+        private double GetBufferVolumeFirstPlate(double thisPlateTimes)
+        {
+            if (thisPlateTimes < 50)
+                return thisPlateTimes;
+            else if(thisPlateTimes <= 2500)
+                return Math.Sqrt(thisPlateTimes);
+            else//third plate > 5 times
+            {
+                thisPlateTimes *= 5;
+                return Math.Pow(thisPlateTimes, 0.333);
+            }
         }
 
         private int GetBufferTotalVolume(int plateIndexInRegion)

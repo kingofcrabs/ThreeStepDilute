@@ -35,6 +35,8 @@ namespace ThreeSteps
             int srcGrid = int.Parse(strs[(int)ColType.srcGrid]);
             int srcPosition = int.Parse(strs[(int)ColType.srcPosition]);
             int dilutionTimes = int.Parse(strs[(int)ColType.dilutionTimes]);
+            if (dilutionTimes > 125000)
+                dilutionTimes = 125000;
             diultionInfos.Add(new SampleInfo(srcGrid, srcPosition, dilutionTimes));
         }
     }
