@@ -163,7 +163,6 @@ namespace ThreeSteps
                     if (i != 0)
                     {
                         srcLabware = GetSourceLabware(i, regionIndex);
-
                     }
                         
                     double vol = GetSampleVolume(sample,i);
@@ -196,7 +195,7 @@ namespace ThreeSteps
             List<PipettingInfo> pipettingInfos = new List<PipettingInfo>();
             List<SampleInfo> firstPlateDilutes = thisBatchDiluteInfos.Where(x => x.diluteTimes > 1).ToList();
             List<SampleInfo> secondPlateDilutes = thisBatchDiluteInfos.Where(x => x.diluteTimes > 50).ToList();
-            List<SampleInfo> thirdPlateDilutes = thisBatchDiluteInfos.Where(x => x.diluteTimes > 2500).ToList();
+            List<SampleInfo> thirdPlateDilutes = thisBatchDiluteInfos;
             Dictionary<string, List<SampleInfo>> allSamples = new Dictionary<string, List<SampleInfo>>();
             List<string> plateNames = GetPlateNames(regionIndex);
             allSamples.Add(plateNames[0], firstPlateDilutes);
@@ -211,6 +210,8 @@ namespace ThreeSteps
                 {
                     double vol = GetBufferVolume(sample, plateIndexInRegion);
                     vol = Math.Round(vol, 1);
+                    if (vol == 0)
+                        continue;
                     pipettingInfos.Add(new PipettingInfo("buffer", GetBufferPosition(), plateName, GetDstPosition(sample), vol));
                 }
                 plateIndexInRegion++;

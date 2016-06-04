@@ -52,8 +52,8 @@ namespace ThreeSteps
             Console.WriteLine(string.Format("There are {0} samples.", sampleInfos.Count));
             worklist worklist = new worklist();
             var eachPlateSamplesInfo = worklist.SortInfos(sampleInfos);
-            Directory.Delete(outputFolder, true);
-            Directory.CreateDirectory(outputFolder);
+            //Directory.Delete(outputFolder, true);
+            //Directory.CreateDirectory(outputFolder);
             File.WriteAllText(outputFolder + "regionCnt.txt", eachPlateSamplesInfo.Count.ToString());
             for(int regionIndex = 0; regionIndex < eachPlateSamplesInfo.Count; regionIndex++)
             {
